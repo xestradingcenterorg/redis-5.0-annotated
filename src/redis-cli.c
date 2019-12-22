@@ -210,13 +210,17 @@ static struct config {
     int stat_mode;
     //使用SCAN命令列出所有键，与--pattern搭配使用，--scan
     int scan_mode;
+    //运行一个测试来测量内部系统延迟，测试将运行指定的时间，--intrinsic-latency
     int intrinsic_latency_mode;
+    //测试运行指定的时间，--intrinsic-latency后面的参数
     int intrinsic_latency_duration;
     //指定扫描的key的pattern，与--scan搭配使用，--pattern后面的参数
     char *pattern;
     //rdb文件地址，--rdb后面的参数
     char *rdb_filename;
+    //查找大的keys，--bigkeys
     int bigkeys;
+    //查找热的keys，--hotkeys
     int hotkeys;
     //最后一个参数来自于标准输入，-x后面的参数
     int stdinarg; /* get last arg from stdin. (-x option) */
@@ -225,8 +229,11 @@ static struct config {
     int output; /* output mode, see OUTPUT_* defines */
     sds mb_delim;
     char prompt[128];
+    //Lua脚本， --eval后面的参数
     char *eval;
+    //使用Redis的Lua调试器，--ldb，与--eval一起使用
     int eval_ldb;
+    //Lua调试器的同步模式，参数--ldb-sync-mode
     int eval_ldb_sync;  /* Ask for synchronous mode of the Lua debugger. */
     int eval_ldb_end;   /* Lua debugging session ended. */
     int enable_ldb_on_eval; /* Handle manual SCRIPT DEBUG + EVAL commands. */
