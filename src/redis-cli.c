@@ -180,11 +180,17 @@ static void createClusterManagerCommand(char *cmdname, int argc, char **argv);
 
 static redisContext *context;
 static struct config {
+    //要访问的服务端ip，-h后面的参数
     char *hostip;
+    //要访问的服务端port，-p后面的参数
     int hostport;
+    //要连接的unix socket，-s后面的参数
     char *hostsocket;
+    //命令要重复的次数，-r后面的参数
     long repeat;
+    //每隔几秒(如果想用ms，如10ms则写0.01)执行一次命令，-i后面的参数，必须与-r一起使用。
     long interval;
+    //指定数据库编号，-n后面的参数
     int dbnum;
     int interactive;
     int shutdown;
@@ -202,14 +208,19 @@ static struct config {
     int pipe_timeout;
     int getrdb_mode;
     int stat_mode;
+    //使用SCAN命令列出所有键，与--pattern搭配使用，--scan
     int scan_mode;
     int intrinsic_latency_mode;
     int intrinsic_latency_duration;
+    //指定扫描的key的pattern，与--scan搭配使用，--pattern后面的参数
     char *pattern;
+    //rdb文件地址，--rdb后面的参数
     char *rdb_filename;
     int bigkeys;
     int hotkeys;
+    //最后一个参数来自于标准输入，-x后面的参数
     int stdinarg; /* get last arg from stdin. (-x option) */
+    //要连接的服务器的密码，-a后面的参数
     char *auth;
     int output; /* output mode, see OUTPUT_* defines */
     sds mb_delim;
