@@ -101,16 +101,13 @@ typedef struct dict {
  * dictAdd, dictFind, and other functions against the dictionary even while
  * iterating. Otherwise it is a non safe iterator, and only dictNext()
  * should be called while iterating. */
-/*
- * 字典迭代器结构体
- */
+/* 字典迭代器结构体 */
 typedef struct dictIterator {
-    dict *d;
-    long index;
+    dict *d;            /* 指向要迭代的字典 */
+    long index;         /* 当前迭代到哈希表的索引值 */
     int table, safe;    /* table是ht[table]中的table */
-    dictEntry *entry, *nextEntry;
-    /* unsafe iterator fingerprint for misuse detection. */
-    long long fingerprint;
+    dictEntry *entry, *nextEntry;   /* 当前迭代的节点和下一个节点 */
+    long long fingerprint;  /* 指纹(非安全迭代器用到)，如果字典有任何改变，指纹值就会改变 */
 } dictIterator;
 
 typedef void (dictScanFunction)(void *privdata, const dictEntry *de);
