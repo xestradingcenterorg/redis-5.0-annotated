@@ -269,11 +269,15 @@
  * Note that this is not how the data is actually encoded, is just what we
  * get filled by a function in order to operate more easily. */
 typedef struct zlentry {
-    unsigned int prevrawlensize; /* Bytes used to encode the previous entry len*/
+    //prevrawlen为上一个数据结点的长度，
+    unsigned int prevrawlensize;
+    //prevrawlensize为记录该长度数值所需要的字节数     /* Bytes used to encode the previous entry len*/
     unsigned int prevrawlen;     /* Previous entry len. */
+
+    // lensize表示表示当前长度表示所需的字节数
     unsigned int lensize;        /* Bytes used to encode this entry type/len.
                                     For example strings have a 1, 2 or 5 bytes
-                                    header. Integers always use a single byte.*/
+    //len为当前数据结点的长度                                header. Integers always use a single byte.*/
     unsigned int len;            /* Bytes used to represent the actual entry.
                                     For strings this is just the string length
                                     while for integers it is 1, 2, 3, 4, 8 or
@@ -329,6 +333,7 @@ unsigned int zipIntSize(unsigned char encoding) {
  *
  * The function returns the number of bytes used by the encoding/length
  * header stored in 'p'. */
+// rawlen 如果是字符串字符串的长度
 unsigned int zipStoreEntryEncoding(unsigned char *p, unsigned char encoding, unsigned int rawlen) {
     unsigned char len = 1, buf[5];
 
@@ -461,6 +466,7 @@ unsigned int zipStorePrevEntryLength(unsigned char *p, unsigned int len) {
  * So the function returns a positive number if more space is needed,
  * a negative number if less space is needed, or zero if the same space
  * is needed. */
+// len entryNew 的字节长度
 int zipPrevLenByteDiff(unsigned char *p, unsigned int len) {
     unsigned int prevlensize;
     ZIP_DECODE_PREVLENSIZE(p, prevlensize);
@@ -752,10 +758,14 @@ unsigned char *__ziplistInsert(unsigned char *zl, unsigned char *p, unsigned cha
     zlentry tail;
 
     /* Find out prevlen for the entry that is inserted. */
+    //寻找插入的位置
     if (p[0] != ZIP_END) {
+        //定位到指定位置
         ZIP_DECODE_PREVLEN(p, prevlensize, prevlen);
     } else {
+        //如果插入的位置是尾结点，直接定位到尾结点，看第一个字节的就可以判断
         unsigned char *ptail = ZIPLIST_ENTRY_TAIL(zl);
+        // 判断插入前是否有元素
         if (ptail[0] != ZIP_END) {
             prevlen = zipRawEntryLength(ptail);
         }
@@ -764,6 +774,7 @@ unsigned char *__ziplistInsert(unsigned char *zl, unsigned char *p, unsigned cha
     /* See if the entry can be encoded */
     if (zipTryEncoding(s,slen,&value,&encoding)) {
         /* 'encoding' is set to the appropriate integer encoding */
+        // 返回content内容字节长度
         reqlen = zipIntSize(encoding);
     } else {
         /* 'encoding' is untouched, however zipStoreEntryEncoding will use the
@@ -772,6 +783,7 @@ unsigned char *__ziplistInsert(unsigned char *zl, unsigned char *p, unsigned cha
     }
     /* We need space for both the length of the previous entry and
      * the length of the payload. */
+    // entryNew = prelen + encoding
     reqlen += zipStorePrevEntryLength(NULL,prevlen);
     reqlen += zipStoreEntryEncoding(NULL,encoding,slen);
 
@@ -786,6 +798,7 @@ unsigned char *__ziplistInsert(unsigned char *zl, unsigned char *p, unsigned cha
     }
 
     /* Store offset because a realloc may change the address of zl. */
+    //调整大小，为新结点的插入预留空间
     offset = p-zl;
     zl = ziplistResize(zl,curlen+reqlen+nextdiff);
     p = zl+offset;
@@ -793,6 +806,7 @@ unsigned char *__ziplistInsert(unsigned char *zl, unsigned char *p, unsigned cha
     /* Apply memory move when necessary and update tail offset. */
     if (p[0] != ZIP_END) {
         /* Subtract one because of the ZIP_END bytes */
+        //如果插入的位置不是尾结点，则挪动位置
         memmove(p+reqlen,p-nextdiff,curlen-offset-1+nextdiff);
 
         /* Encode this entry's raw length in the next entry. */
@@ -815,6 +829,7 @@ unsigned char *__ziplistInsert(unsigned char *zl, unsigned char *p, unsigned cha
         }
     } else {
         /* This element will be the new tail. */
+        //如果是尾结点，直接设置新尾结点
         ZIPLIST_TAIL_OFFSET(zl) = intrev32ifbe(p-zl);
     }
 
@@ -827,6 +842,7 @@ unsigned char *__ziplistInsert(unsigned char *zl, unsigned char *p, unsigned cha
     }
 
     /* Write the entry */
+    //写入新的数据结点信息
     p += zipStorePrevEntryLength(p,prevlen);
     p += zipStoreEntryEncoding(p,encoding,slen);
     if (ZIP_IS_STR(encoding)) {
@@ -834,6 +850,7 @@ unsigned char *__ziplistInsert(unsigned char *zl, unsigned char *p, unsigned cha
     } else {
         zipSaveInteger(p,value,encoding);
     }
+    //更新列表的长度加1
     ZIPLIST_INCR_LENGTH(zl,1);
     return zl;
 }
