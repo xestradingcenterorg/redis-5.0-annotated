@@ -130,57 +130,91 @@ int zslRandomLevel(void) {
  * exist (up to the caller to enforce that). The skiplist takes ownership
  * of the passed SDS string 'ele'. */
 zskiplistNode *zslInsert(zskiplist *zsl, double score, sds ele) {
+    //update[]: 插入节点时，需要更新被插入节点每层的前一个节点。由于每层更新的节点不一样，所以讲每层需要更新的节点记录在update[i]中
     zskiplistNode *update[ZSKIPLIST_MAXLEVEL], *x;
+    //rank[]记录当前从header节点到update[i]节点所经历的步长，在更新update[i]的span和设置新插入节点的span时用到
     unsigned int rank[ZSKIPLIST_MAXLEVEL];
     int i, level;
 
     serverAssert(!isnan(score));
     x = zsl->header;
+    //level层是 0 ~ level-1
     for (i = zsl->level-1; i >= 0; i--) {
         /* store rank that is crossed to reach the insert position */
+        //第一次循环的时候为0，即rank[zsl->level-1] = 0, 否则 rank[i] = rank[i+1]（即不需要从头开始找，从上一层结束的地方开始找就行了）
         rank[i] = i == (zsl->level-1) ? 0 : rank[i+1];
+        //条件：1.该层还能继续往后跳 2.需要满足以下其中之一的条件 (2.1 该层后一个节点的分数小于要插入节点的分数 2.2 分数相等，但是字典序小于要插入的节点）
         while (x->level[i].forward &&
                 (x->level[i].forward->score < score ||
                     (x->level[i].forward->score == score &&
                     sdscmp(x->level[i].forward->ele,ele) < 0)))
         {
+            //当前层从header节点到update[i]节点所经历的步长
             rank[i] += x->level[i].span;
+            //往后跳跃
             x = x->level[i].forward;
         }
+        //插入节点时，每层的前一个节点
         update[i] = x;
     }
     /* we assume the element is not already inside, since we allow duplicated
      * scores, reinserting the same element should never happen since the
      * caller of zslInsert() should test in the hash table if the element is
      * already inside or not. */
+    /**
+     * 在调用zslInsert()之前，会先在hash table中检查一下元素是否已经存在
+     * 所以我们认为绝对不会有相同的元素插入，分数可以相同
+     **/
     level = zslRandomLevel();
+    /**
+     * 如果新插入元素的层数高于跳跃表现有的层数，则需要层数扩充
+     * 新扩充的层原来的元素都没有，只有header节点可以设置该层，所以对应层的前一个节点都是header
+     **/
     if (level > zsl->level) {
         for (i = zsl->level; i < level; i++) {
             rank[i] = 0;
             update[i] = zsl->header;
+            //先赋值为跳跃表的总长度
             update[i]->level[i].span = zsl->length;
         }
         zsl->level = level;
     }
+    //x为新创建的节点
     x = zslCreateNode(level,score,ele);
     for (i = 0; i < level; i++) {
+        //下边2行就是链表操作了，链表中间插入一个节点
+        //（当前层）新节点的后一个节点为 [新节点前一个节点]的后一个节点
         x->level[i].forward = update[i]->level[i].forward;
+        //（当前层）新节点前一个节点的 后一个节点为新节点
         update[i]->level[i].forward = x;
 
         /* update span covered by update[i] as x is inserted here */
+        /**
+         * 只有当前节点和当前节点前一个节点的span值受影响，rank[0]记录的是第0层到前一个节点所经历的节点数量，rank[i]是第i层到前一个节点所经历的节点数量
+         * 第0层，span值肯定都是1
+         * 第i层结构从a -> c 变成了 a -> b ->c  ,rank[0] - rank[i] => (b - 1) - a，a.span = c - a
+         * a.span - (rank[0] - rank[i]) => c - a - ((b - 1) - a) =>  c - a - (b - 1)+ a => c - (b - 1),  即b的span值
+         **/
+        //设置当前节点当前层的span值
         x->level[i].span = update[i]->level[i].span - (rank[0] - rank[i]);
+        //设置当前节点的前一个节点当前层的span值， rank[0] - rank[i] => (b - 1) - a , (rank[0] - rank[i]) + 1 => (b-1) -a + 1 => b - a
         update[i]->level[i].span = (rank[0] - rank[i]) + 1;
     }
 
     /* increment span for untouched levels */
+    //如果新插入的节点level小于原跳跃表的level，则它上层的level需要执行+1操作
     for (i = level; i < zsl->level; i++) {
         update[i]->level[i].span++;
     }
 
+    /**
+     * 新插入节点的前一个节点一定是update[0]，如果update[0]是特殊的头结点，则设置插入节点的前一个节点为NULL，否则设置为update[0]
+     **/
     x->backward = (update[0] == zsl->header) ? NULL : update[0];
+    //如果新插入的节点不是尾结点，则设置当前节点的下一个节点的前一个节点时当前节点
     if (x->level[0].forward)
         x->level[0].forward->backward = x;
-    else
+    else    //如果是尾结点，没有下一个节点，直接设置跳跃表的尾结点点指向当前节点
         zsl->tail = x;
     zsl->length++;
     return x;
@@ -232,6 +266,7 @@ int zslDelete(zskiplist *zsl, double score, sds ele, zskiplistNode **node) {
     }
     /* We may have multiple elements with the same score, what we need
      * is to find the element with both the right score and object. */
+    //x原来是要删除的前驱节点
     x = x->level[0].forward;
     if (x && score == x->score && sdscmp(x->ele,ele) == 0) {
         zslDeleteNode(zsl, x, update);

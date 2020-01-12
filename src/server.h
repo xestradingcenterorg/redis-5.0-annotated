@@ -798,8 +798,8 @@ typedef struct zskiplistNode {
     double score;
     struct zskiplistNode *backward;
     struct zskiplistLevel {
-        struct zskiplistNode *forward;
-        unsigned long span;
+        struct zskiplistNode *forward; //本层的下一个节点
+        unsigned long span;            //forward指向的节点与本节点之间的元素个数
     } level[];
 } zskiplistNode;
 
