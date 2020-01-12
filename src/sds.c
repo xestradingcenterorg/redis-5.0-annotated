@@ -41,9 +41,11 @@
 
 const char *SDS_NOINIT = "SDS_NOINIT";
 
+/*根据type类型获取head头部大小*/
 static inline int sdsHdrSize(char type) {
     switch(type&SDS_TYPE_MASK) {
         case SDS_TYPE_5:
+            /*返回对应头部大小*/
             return sizeof(struct sdshdr5);
         case SDS_TYPE_8:
             return sizeof(struct sdshdr8);
@@ -57,6 +59,7 @@ static inline int sdsHdrSize(char type) {
     return 0;
 }
 
+/*根据字符串长度选择合适的sds类型*/
 static inline char sdsReqType(size_t string_size) {
     if (string_size < 1<<5)
         return SDS_TYPE_5;
@@ -86,32 +89,44 @@ static inline char sdsReqType(size_t string_size) {
  * You can print the string with printf() as there is an implicit \0 at the
  * end of the string. However the string is binary safe and can contain
  * \0 characters in the middle, as the length is stored in the sds header. */
+
+/*创建一个新的sds字符串*/
 sds sdsnewlen(const void *init, size_t initlen) {
     void *sh;
     sds s;
+    /*根据字符串长度获取合适的sds类型*/
     char type = sdsReqType(initlen);
-    /* Empty strings are usually created in order to append. Use type 8
-     * since type 5 is not good at this. */
+    /*SDS_TYPE_5强制转换成SDS_TYPE_8,空字符串后面往往会追加新的内容*/
     if (type == SDS_TYPE_5 && initlen == 0) type = SDS_TYPE_8;
+    /*获取head头部大小*/
     int hdrlen = sdsHdrSize(type);
-    unsigned char *fp; /* flags pointer. */
+    /*定义一个指针,后续用于指向flag字段 */
+    unsigned char *fp; 
 
+    /*实际申请空间大小=头部长度+字符串长度+末尾\0*/
     sh = s_malloc(hdrlen+initlen+1);
     if (init==SDS_NOINIT)
         init = NULL;
     else if (!init)
+        /*初始化内存空间*/
         memset(sh, 0, hdrlen+initlen+1);
     if (sh == NULL) return NULL;
+    /*sds结构体=头部head+buf数组实体*/
     s = (char*)sh+hdrlen;
+    /*指向flag字段*/
     fp = ((unsigned char*)s)-1;
+    /*根据不同类型构建对应sds结构体*/
     switch(type) {
         case SDS_TYPE_5: {
+            /*SDS_TYPE_5头部只有flag字段*/
             *fp = type | (initlen << SDS_TYPE_BITS);
             break;
         }
         case SDS_TYPE_8: {
             SDS_HDR_VAR(8,s);
+            /*赋值len字段*/
             sh->len = initlen;
+            /*赋值alloc字段*/
             sh->alloc = initlen;
             *fp = type;
             break;
@@ -139,7 +154,9 @@ sds sdsnewlen(const void *init, size_t initlen) {
         }
     }
     if (initlen && init)
+        /*将字符串内容拷贝到buf数组*/
         memcpy(s, init, initlen);
+    /*末尾追加\0*/
     s[initlen] = '\0';
     return s;
 }

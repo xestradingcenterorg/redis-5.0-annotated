@@ -33,6 +33,7 @@
 #ifndef __SDS_H
 #define __SDS_H
 
+/*定义最大可分配的内存 1024 byte * 1024 = 1M */
 #define SDS_MAX_PREALLOC (1024*1024)
 const char *SDS_NOINIT;
 
@@ -40,37 +41,59 @@ const char *SDS_NOINIT;
 #include <stdarg.h>
 #include <stdint.h>
 
+/*定义别名,实际指向下面结构中的buf*/
 typedef char *sds;
 
-/* Note: sdshdr5 is never used, we just access the flags byte directly.
- * However is here to document the layout of type 5 SDS strings. */
+/*文中原有注释说不使用sdshdr5这种类型，但其实当作key的短字符串是采用sdshdr5存储的，具体可参考
+ * https://segmentfault.com/a/1190000017450295
+ */
+
+/*下面是定义的5种类型*/
 struct __attribute__ ((__packed__)) sdshdr5 {
-    unsigned char flags; /* 3 lsb of type, and 5 msb of string length */
-    char buf[];
+    /* 一个字节中的低3位表示类型,高5位表示长度(这里要注意与下面的其他4种类型的高5位是有区别的) */
+    unsigned char flags;
+    /*柔性数组，用于实际存储字符串内容*/
+    char buf[]; 
 };
 struct __attribute__ ((__packed__)) sdshdr8 {
-    uint8_t len; /* used */
-    uint8_t alloc; /* excluding the header and null terminator */
-    unsigned char flags; /* 3 lsb of type, 5 unused bits */
-    char buf[];
+    /* 已使用长度 */
+    uint8_t len; 
+    /* 实际申请的内存总大小 */
+    uint8_t alloc; 
+    /* 一个字节中的低3位表示类型,高5位没有使用 */
+    unsigned char flags; 
+    /*柔性数组，用于实际存储字符串内容*/
+    char buf[]; 
 };
 struct __attribute__ ((__packed__)) sdshdr16 {
-    uint16_t len; /* used */
-    uint16_t alloc; /* excluding the header and null terminator */
-    unsigned char flags; /* 3 lsb of type, 5 unused bits */
-    char buf[];
+    /* 已使用长度 */
+    uint16_t len; 
+    /* 实际申请的内存总大小 */
+    uint16_t alloc; 
+    /* 一个字节中的低3位表示类型,高5位没有使用 */
+    unsigned char flags; 
+    /*柔性数组，用于实际存储字符串内容*/
+    char buf[]; 
 };
 struct __attribute__ ((__packed__)) sdshdr32 {
-    uint32_t len; /* used */
-    uint32_t alloc; /* excluding the header and null terminator */
-    unsigned char flags; /* 3 lsb of type, 5 unused bits */
-    char buf[];
+     /* 已使用长度 */
+    uint32_t len; 
+    /* 实际申请的内存总大小 */
+    uint32_t alloc; 
+    /* 一个字节中的低3位表示类型,高5位没有使用 */
+    unsigned char flags; 
+    /*柔性数组，用于实际存储字符串内容*/
+    char buf[]; 
 };
 struct __attribute__ ((__packed__)) sdshdr64 {
-    uint64_t len; /* used */
-    uint64_t alloc; /* excluding the header and null terminator */
-    unsigned char flags; /* 3 lsb of type, 5 unused bits */
-    char buf[];
+    /* 已使用长度 */
+    uint64_t len; 
+    /* 实际申请的内存总大小 */
+    uint64_t alloc; 
+    /* 一个字节中的低3位表示类型,高5位没有使用 */
+    unsigned char flags; 
+    /*柔性数组，用于实际存储字符串内容*/
+    char buf[]; 
 };
 
 #define SDS_TYPE_5  0
@@ -84,12 +107,17 @@ struct __attribute__ ((__packed__)) sdshdr64 {
 #define SDS_HDR(T,s) ((struct sdshdr##T *)((s)-(sizeof(struct sdshdr##T))))
 #define SDS_TYPE_5_LEN(f) ((f)>>SDS_TYPE_BITS)
 
+/*获取字符串长度*/
 static inline size_t sdslen(const sds s) {
+    /*由于同一个结构体内存是连续的,且经过__attribute__ ((__packed__))处理,结构体按1字节对齐,所以sds指针往低位偏移1个字节即可得到flag字段*/
     unsigned char flags = s[-1];
+    /*通过flag字段获取对应类型结构体,从而再获取对应len字段(除SDS_TYPE_5之外)*/
     switch(flags&SDS_TYPE_MASK) {
         case SDS_TYPE_5:
+            /*获取低3位的值*/
             return SDS_TYPE_5_LEN(flags);
         case SDS_TYPE_8:
+            /*直接获取对应len字段*/
             return SDS_HDR(8,s)->len;
         case SDS_TYPE_16:
             return SDS_HDR(16,s)->len;
@@ -101,14 +129,18 @@ static inline size_t sdslen(const sds s) {
     return 0;
 }
 
+/*获取剩余存储空间 alloc - len*/
 static inline size_t sdsavail(const sds s) {
+    /*低位后移1字节得到flag字段*/
     unsigned char flags = s[-1];
     switch(flags&SDS_TYPE_MASK) {
+        /*由于SDS_TYPE_5没有len字段,直接返回0*/
         case SDS_TYPE_5: {
             return 0;
         }
         case SDS_TYPE_8: {
             SDS_HDR_VAR(8,s);
+            /*alloc总大小减去len大小即为剩余可用空间*/
             return sh->alloc - sh->len;
         }
         case SDS_TYPE_16: {
@@ -127,7 +159,9 @@ static inline size_t sdsavail(const sds s) {
     return 0;
 }
 
+/*设置字符串长度*/
 static inline void sdssetlen(sds s, size_t newlen) {
+    /*低位后移1字节得到flag字段*/
     unsigned char flags = s[-1];
     switch(flags&SDS_TYPE_MASK) {
         case SDS_TYPE_5:
@@ -137,6 +171,7 @@ static inline void sdssetlen(sds s, size_t newlen) {
             }
             break;
         case SDS_TYPE_8:
+            /*将新的长度赋值给len字段*/
             SDS_HDR(8,s)->len = newlen;
             break;
         case SDS_TYPE_16:
@@ -151,7 +186,9 @@ static inline void sdssetlen(sds s, size_t newlen) {
     }
 }
 
+/*增加字符串长度*/
 static inline void sdsinclen(sds s, size_t inc) {
+    /*低位后移1字节得到flag字段*/
     unsigned char flags = s[-1];
     switch(flags&SDS_TYPE_MASK) {
         case SDS_TYPE_5:
@@ -162,6 +199,7 @@ static inline void sdsinclen(sds s, size_t inc) {
             }
             break;
         case SDS_TYPE_8:
+            /*len字段追加inc新增的长度*/
             SDS_HDR(8,s)->len += inc;
             break;
         case SDS_TYPE_16:
@@ -176,13 +214,15 @@ static inline void sdsinclen(sds s, size_t inc) {
     }
 }
 
-/* sdsalloc() = sdsavail() + sdslen() */
+/*获取字符串总容量
+ * sdsalloc() = sdsavail() + sdslen() */
 static inline size_t sdsalloc(const sds s) {
     unsigned char flags = s[-1];
     switch(flags&SDS_TYPE_MASK) {
         case SDS_TYPE_5:
             return SDS_TYPE_5_LEN(flags);
         case SDS_TYPE_8:
+        /*直接获取对应alloc字段*/
             return SDS_HDR(8,s)->alloc;
         case SDS_TYPE_16:
             return SDS_HDR(16,s)->alloc;
@@ -194,13 +234,15 @@ static inline size_t sdsalloc(const sds s) {
     return 0;
 }
 
+/*设置alloc*/
 static inline void sdssetalloc(sds s, size_t newlen) {
     unsigned char flags = s[-1];
     switch(flags&SDS_TYPE_MASK) {
         case SDS_TYPE_5:
-            /* Nothing to do, this type has no total allocation info. */
+            /* 由于 SDS_TYPE_5 没有alloc信息,所以这里无需设置*/
             break;
         case SDS_TYPE_8:
+            /*给alloc字段重新赋值*/
             SDS_HDR(8,s)->alloc = newlen;
             break;
         case SDS_TYPE_16:
