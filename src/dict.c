@@ -113,10 +113,13 @@ static void _dictReset(dictht *ht)
 dict *dictCreate(dictType *type,
         void *privDataPtr)
 {
-    dict *d = zmalloc(sizeof(*d));  /* 声明一个字典并分配内存 */
+    /* 声明一个字典并分配内存 */
+    dict *d = zmalloc(sizeof(*d));
 
-    _dictInit(d,type,privDataPtr);  /* 初始化字典 */
-    return d;   /* 返回新创建的字典 */
+    /* 初始化字典 */
+    _dictInit(d,type,privDataPtr);
+    /* 返回新创建的字典 */
+    return d;
 }
 
 /* Initialize the hash table */
@@ -124,8 +127,10 @@ dict *dictCreate(dictType *type,
 int _dictInit(dict *d, dictType *type,
         void *privDataPtr)
 {
-    _dictReset(&d->ht[0]);  /* 重置ht[0]（将哈希表中的字段重置为0或NULL） */
-    _dictReset(&d->ht[1]);  /* 重置ht[1]（将哈希表中的字段重置为0或NULL）*/
+    /* 重置ht[0]（将哈希表中的字段重置为0或NULL） */
+    _dictReset(&d->ht[0]);
+    /* 重置ht[1]（将哈希表中的字段重置为0或NULL）*/
+    _dictReset(&d->ht[1]);
     d->type = type;
     d->privdata = privDataPtr;
     d->rehashidx = -1;
@@ -141,10 +146,13 @@ int dictResize(dict *d)
     int minimal;
 
     if (!dict_can_resize || dictIsRehashing(d)) return DICT_ERR;
-    minimal = d->ht[0].used;    /* 最小容量设置为哈希表已使用节点数 */
-    if (minimal < DICT_HT_INITIAL_SIZE) /* minimal和哈希表初始大小值 取最小，作为最小容量值 */
+    /* 最小容量设置为哈希表已使用节点数 */
+    minimal = d->ht[0].used;
+    /* minimal和哈希表初始大小值 取最小，作为最小容量值 */
+    if (minimal < DICT_HT_INITIAL_SIZE)
         minimal = DICT_HT_INITIAL_SIZE;
-    return dictExpand(d, minimal);  /* 按照minimal大小扩容 */
+    /* 按照minimal大小扩容 */
+    return dictExpand(d, minimal);
 }
 
 /* Expand or create the hash table */
@@ -159,7 +167,8 @@ int dictExpand(dict *d, unsigned long size)
 
     dictht n; /* the new hash table */
               /* 声明一个新的哈希表，用于后续扩容 */
-    unsigned long realsize = _dictNextPower(size);  /* 调整size大小为2的n次幂 */
+    /* 调整size大小为2的n次幂 */
+    unsigned long realsize = _dictNextPower(size);
 
     /* Rehashing to the same table size is not useful. */
     /* 如果调整后的大小与哈希表原来的大小相同，则返回错误 */
@@ -202,7 +211,8 @@ int dictExpand(dict *d, unsigned long size)
 int dictRehash(dict *d, int n) {
     int empty_visits = n*10; /* Max number of empty buckets to visit. */
                              /* 设置遍历的最大空bucket数，当空的bucket过多时可以避免造成阻塞 */
-    if (!dictIsRehashing(d)) return 0;  /* 如果字典已经在rehash了，直接返回0 */
+    /* 如果字典已经在rehash了，直接返回0 */
+    if (!dictIsRehashing(d)) return 0;
 
     /* rehash执行的步数(循环次数)：min(参数n, 哈希表已使用节点数) */
     while(n-- && d->ht[0].used != 0) {
@@ -219,7 +229,8 @@ int dictRehash(dict *d, int n) {
          * 如果空bucket数超过了最大遍历空桶数，则直接返回 */
         while(d->ht[0].table[d->rehashidx] == NULL) {
             d->rehashidx++;
-            if (--empty_visits == 0) return 1;  /* return 1 表示还要继续rehash */
+            /* return 1 表示还要继续rehash */
+            if (--empty_visits == 0) return 1;
         }
 
         /* 将de指向上一步找到的第一个不为空的bucket */
@@ -255,10 +266,14 @@ int dictRehash(dict *d, int n) {
     /* Check if we already rehashed the whole table... */
     /* 判断是否ht[0]的所有节点已经rehash完成 */
     if (d->ht[0].used == 0) {
-        zfree(d->ht[0].table);  /* 释放ht[0].table的内存 */
-        d->ht[0] = d->ht[1];    /* 释放ht[1]赋值给ht[0] */
-        _dictReset(&d->ht[1]);  /* 重置ht[1] */
-        d->rehashidx = -1;      /* rehashidx重新置为-1，表示rehash结束 */
+        /* 释放ht[0].table的内存 */
+        zfree(d->ht[0].table);
+        /* 释放ht[1]赋值给ht[0] */
+        d->ht[0] = d->ht[1];
+        /* 重置ht[1] */
+        _dictReset(&d->ht[1]);
+        /* rehashidx重新置为-1，表示rehash结束 */
+        d->rehashidx = -1;
         return 0;
     }
 
@@ -544,14 +559,19 @@ void dictRelease(dict *d)
 /* 查找key */
 dictEntry *dictFind(dict *d, const void *key)
 {
-    dictEntry *he;  /* 表示当前节点 */
-    uint64_t h, idx, table; /* key的哈希值，索引值，哈希表索引值(0,1) */
+    /* 表示当前节点 */
+    dictEntry *he;
+    /* key的哈希值，索引值，哈希表索引值(0,1) */
+    uint64_t h, idx, table;
 
     if (d->ht[0].used + d->ht[1].used == 0) return NULL; /* dict is empty */
-    if (dictIsRehashing(d)) _dictRehashStep(d); /* 字典正在rehash，则执行一步rehash */
+    /* 字典正在rehash，则执行一步rehash */
+    if (dictIsRehashing(d)) _dictRehashStep(d);
 
-    h = dictHashKey(d, key);    /* 计算key的hash值 */
-    for (table = 0; table <= 1; table++) {  /* 遍历两个哈希表 */
+    /* 计算key的hash值 */
+    h = dictHashKey(d, key);
+    /* 遍历两个哈希表 */
+    for (table = 0; table <= 1; table++) {
         /* 计算索引值 */
         idx = h & d->ht[table].sizemask;
         /* 将he指向当前哈希表的idx位置 */
@@ -642,15 +662,21 @@ dictEntry *dictNext(dictIterator *iter)
          * 1. 第一次遍历字典，此时迭代器的entry初始值为NULL；
          * 2. 遍历完bucket的最后一个节点，bucket的最后一个节点的next为NULL */
         if (iter->entry == NULL) {
-            dictht *ht = &iter->d->ht[iter->table]; /* 将ht指向当前遍历到的哈希表（ht[0]或ht[1]）*/
-            if (iter->index == -1 && iter->table == 0) { /* 该判断表示第一次遍历 */
+            /* 将ht指向当前遍历到的哈希表（ht[0]或ht[1]）*/
+            dictht *ht = &iter->d->ht[iter->table];
+            /* 该判断表示第一次遍历 */
+            if (iter->index == -1 && iter->table == 0) {
                 if (iter->safe)
-                    iter->d->iterators++; /* 如果是安全迭代器，则迭代器数量++，用于暂停rehash */
+                    /* 如果是安全迭代器，则迭代器数量++，用于暂停rehash */
+                    iter->d->iterators++;
                 else
-                    iter->fingerprint = dictFingerprint(iter->d); /* 如果是非安全迭代器，则计算指纹 */
+                    /* 如果是非安全迭代器，则计算指纹 */
+                    iter->fingerprint = dictFingerprint(iter->d);
             }
-            iter->index++; /* 遍历哈希表的索引值+1，依次向后遍历 */
-            if (iter->index >= (long) ht->size) { /* 如果索引值大于等于哈希表的大小，表示该哈希表遍历结束了 */
+            /* 遍历哈希表的索引值+1，依次向后遍历 */
+            iter->index++;
+            /* 如果索引值大于等于哈希表的大小，表示该哈希表遍历结束了 */
+            if (iter->index >= (long) ht->size) {
                 /* 如果正在进行rehash，且当前哈希表是ht[0]，则还需要继续遍历ht[1]；
                  * 否则直接跳出，结束遍历 */
                 if (dictIsRehashing(iter->d) && iter->table == 0) {
@@ -941,11 +967,16 @@ static unsigned long rev(unsigned long v) {
  * 3) The reverse cursor is somewhat hard to understand at first, but this
  *    comment is supposed to help.
  */
-unsigned long dictScan(dict *d,                 /* 当前迭代的字典 */
-                       unsigned long v,         /* 游标值，即哈希表的索引值 */
-                       dictScanFunction *fn,    /* 函数指针，每遍历一个节点则调用该函数处理 */
-                       dictScanBucketFunction* bucketfn, /* bucketfn函数在整理碎片时调用 */
-                       void *privdata)          /* privdata是回调函数fn所需参数 */
+/* d 当前迭代的字典 */
+/* v 游标值，即哈希表的索引值 */
+/* fn 函数指针，每遍历一个节点则调用该函数处理 */
+/* bucketfn 函数在整理碎片时调用 */
+/* privdata 是回调函数fn所需参数 */
+unsigned long dictScan(dict *d,
+                       unsigned long v,
+                       dictScanFunction *fn,
+                       dictScanBucketFunction* bucketfn,
+                       void *privdata)
 {
     dictht *t0, *t1;
     const dictEntry *de, *next;
@@ -966,19 +997,22 @@ unsigned long dictScan(dict *d,                 /* 当前迭代的字典 */
         de = t0->table[v & m0];
         while (de) {
             next = de->next;
-            fn(privdata, de); /* 使用fn指向的函数处理当前迭代到的节点 */
+            /* 使用fn指向的函数处理当前迭代到的节点 */
+            fn(privdata, de);
             de = next;
         }
 
         /* Set unmasked bits so incrementing the reversed cursor
          * operates on the masked bits */
         /* 计算下一次迭代的游标值(实际实现的是高位+1) */
-        /* v 和 m0 按位取反的结果做"或"运算（为啥要计算这一步？） */
+        /* v 和 m0 按位取反的结果做"或"运算(使v的二进制位数与掩码位数相同?) */
         v |= ~m0;
         /* Increment the reverse cursor */
-        v = rev(v); /* v 高低位反转 */
+        /* v 高低位反转 */
+        v = rev(v);
         v++;
-        v = rev(v); /* v 高低位反转 */
+        /* v 高低位反转 */
+        v = rev(v);
 
     } else { /* 正在进行rehash，要遍历ht[0]和ht[1] 表 */
         t0 = &d->ht[0];
