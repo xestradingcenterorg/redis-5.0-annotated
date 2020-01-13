@@ -127,6 +127,7 @@ typedef struct dictIterator {
     int table, safe;
     /* 当前迭代的节点和下一个节点 */
     dictEntry *entry, *nextEntry;
+    /* unsafe iterator fingerprint for misuse detection. */
     /* 指纹(非安全迭代器用到)，如果字典有任何改变，指纹值就会改变 */
     long long fingerprint;
 } dictIterator;

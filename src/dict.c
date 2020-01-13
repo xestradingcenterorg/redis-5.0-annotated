@@ -216,7 +216,6 @@ int dictRehash(dict *d, int n) {
 
     /* rehash执行的步数(循环次数)：min(参数n, 哈希表已使用节点数) */
     while(n-- && d->ht[0].used != 0) {
-
         /* 定义一个新的哈希表节点de，和de的下一个结点nextde */
         dictEntry *de, *nextde; 
 
@@ -458,7 +457,7 @@ static dictEntry *dictGenericDelete(dict *d, const void *key, int nofree) {
                 if (prevHe)
                     /* 如果prevHe不为空（表示不是头结点），则需要把前一个节点的next指向当前节点的next */
                     prevHe->next = he->next;
-                else    
+                else
                     /* 如果prevHe为空（头结点），则直接把d->ht[table].table[idx]指向he的next */
                     d->ht[table].table[idx] = he->next;
                 /* nofree=0时，需要释放内存 */
@@ -1014,7 +1013,8 @@ unsigned long dictScan(dict *d,
         /* v 高低位反转 */
         v = rev(v);
 
-    } else { /* 正在进行rehash，要遍历ht[0]和ht[1] 表 */
+    } else {
+        /* 正在进行rehash，要遍历ht[0]和ht[1] 表 */
         t0 = &d->ht[0];
         t1 = &d->ht[1];
 
