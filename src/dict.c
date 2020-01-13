@@ -217,7 +217,7 @@ int dictRehash(dict *d, int n) {
     /* rehash执行的步数(循环次数)：min(参数n, 哈希表已使用节点数) */
     while(n-- && d->ht[0].used != 0) {
         /* 定义一个新的哈希表节点de，和de的下一个结点nextde */
-        dictEntry *de, *nextde; 
+        dictEntry *de, *nextde;
 
         /* Note that rehashidx can't overflow as we are sure there are more
          * elements because ht[0].used != 0 */
@@ -1006,6 +1006,7 @@ unsigned long dictScan(dict *d,
         /* 计算下一次迭代的游标值(实际实现的是高位+1) */
         /* v 和 m0 按位取反的结果做"或"运算(使v的二进制位数与掩码位数相同?) */
         v |= ~m0;
+        
         /* Increment the reverse cursor */
         /* v 高低位反转 */
         v = rev(v);
