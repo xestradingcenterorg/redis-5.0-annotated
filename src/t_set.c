@@ -261,13 +261,22 @@ void setTypeConvert(robj *setobj, int enc) {
     }
 }
 
+/**
+ * 添加元素的入口
+ */
 void saddCommand(client *c) {
     robj *set;
     int j, added = 0;
-
+    
+    /**
+     * 查找一个可用来执行写操作的key
+     * 一个副作用: 如果键是有有效期（ttl）的，会执行过期操作
+     */
     set = lookupKeyWrite(c->db,c->argv[1]);
     if (set == NULL) {
+        /* 要添加元素的集合不存在则创建集合对象 */
         set = setTypeCreate(c->argv[2]->ptr);
+        /* db添加该集合到对象字典里 */
         dbAdd(c->db,c->argv[1],set);
     } else {
         if (set->type != OBJ_SET) {
@@ -283,6 +292,7 @@ void saddCommand(client *c) {
         signalModifiedKey(c->db,c->argv[1]);
         notifyKeyspaceEvent(NOTIFY_SET,"sadd",c->argv[1],c->db->id);
     }
+    /* 记录从上次RDB保存后到现在DB的改变 */
     server.dirty += added;
     addReplyLongLong(c,added);
 }
