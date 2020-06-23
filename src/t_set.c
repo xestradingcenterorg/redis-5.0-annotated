@@ -49,8 +49,13 @@ robj *setTypeCreate(sds value) {
  *
  * If the value was already member of the set, nothing is done and 0 is
  * returned, otherwise the new element is added and 1 is returned. */
+/* 将指定值添加到一个集合
+ * 
+ * 如果这个值已经是这个集合的成员，则无需任何操作，直接返回0.否则，插入一个新的元素并且返回1.
+ */
 int setTypeAdd(robj *subject, sds value) {
     long long llval;
+    //集合编码类型是哈希
     if (subject->encoding == OBJ_ENCODING_HT) {
         dict *ht = subject->ptr;
         dictEntry *de = dictAddRaw(ht,value,NULL);
@@ -59,6 +64,7 @@ int setTypeAdd(robj *subject, sds value) {
             dictSetVal(ht,de,NULL);
             return 1;
         }
+    //集合编码类型是整数集合
     } else if (subject->encoding == OBJ_ENCODING_INTSET) {
         if (isSdsRepresentableAsLongLong(value,&llval) == C_OK) {
             uint8_t success = 0;
