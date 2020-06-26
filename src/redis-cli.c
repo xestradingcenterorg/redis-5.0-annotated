@@ -1283,14 +1283,22 @@ static int parseOptions(int argc, char **argv) {
             //后面跟密码
             config.auth = argv[++i];
         } else if (!strcmp(argv[i],"-u") && !lastarg) {
-            //后面跟uri格式 redis://[:password]@host:port/db
-            //比如redis://world@127.0.0.1:16379/0
+            //后面跟uri，格式为redis://[username][:password]@host:port/db
+            //例如：redis://world@127.0.0.1:16379/0
             parseRedisUri(argv[++i]);
         } else if (!strcmp(argv[i],"--raw")) {
+            //输出原始数据格式
+            //比如执行set hello world，然后再执行get hello
+            //如果用了--raw，输出的是world，否则输出的是"workd"
+            //再比如执行set county 中国，然后再执行get county
+            //如用用了--raw，输出的是中国，否则输出的是"\xe4\xb8\xad\xe5\x9b\xbd"
+            //注：当redis返回的数据重定向到文件或是管道时，默认开启--raw
             config.output = OUTPUT_RAW;
         } else if (!strcmp(argv[i],"--no-raw")) {
+            //拒绝输出原始数据格式 和--raw相反
             config.output = OUTPUT_STANDARD;
         } else if (!strcmp(argv[i],"--csv")) {
+            //输出csv格式数据
             config.output = OUTPUT_CSV;
         } else if (!strcmp(argv[i],"--latency")) {
             config.latency_mode = 1;
