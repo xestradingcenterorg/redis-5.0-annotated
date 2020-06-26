@@ -1245,30 +1245,46 @@ static int parseOptions(int argc, char **argv) {
         int lastarg = i==argc-1;
 
         if (!strcmp(argv[i],"-h") && !lastarg) {
+            //后面跟host
             sdsfree(config.hostip);
             config.hostip = sdsnew(argv[++i]);
         } else if (!strcmp(argv[i],"-h") && lastarg) {
+            //命令redis-cli -h
             usage();
         } else if (!strcmp(argv[i],"--help")) {
+            //命令redis-cli --help
             usage();
         } else if (!strcmp(argv[i],"-x")) {
+            //把标准输入当成命令执行
+            //比如 echo "set hello world" | redis-cli -x
+            //再比如 echo "world" | redis-cli -x set hello
             config.stdinarg = 1;
         } else if (!strcmp(argv[i],"-p") && !lastarg) {
+            //后面跟端口号
             config.hostport = atoi(argv[++i]);
         } else if (!strcmp(argv[i],"-s") && !lastarg) {
+            //后面跟unix socket
             config.hostsocket = argv[++i];
         } else if (!strcmp(argv[i],"-r") && !lastarg) {
+            //后面跟执行命令次数 
+            //比如 redis-cli -r 3 set hello world 将会执行set hello world 三次
             config.repeat = strtoll(argv[++i],NULL,10);
         } else if (!strcmp(argv[i],"-i") && !lastarg) {
+            //后面跟每次命令执行时间间隔，和参数-r一起使用
+            //单位为秒，可以是小数
             double seconds = atof(argv[++i]);
             config.interval = seconds*1000000;
         } else if (!strcmp(argv[i],"-n") && !lastarg) {
+            //后面跟数据库编号
             config.dbnum = atoi(argv[++i]);
         } else if (!strcmp(argv[i], "--no-auth-warning")) {
             config.no_auth_warning = 1;
         } else if (!strcmp(argv[i],"-a") && !lastarg) {
+            //后面跟密码
             config.auth = argv[++i];
         } else if (!strcmp(argv[i],"-u") && !lastarg) {
+            //后面跟uri格式 redis://[:password]@host:port/db
+            //比如redis://world@127.0.0.1:16379/0
             parseRedisUri(argv[++i]);
         } else if (!strcmp(argv[i],"--raw")) {
             config.output = OUTPUT_RAW;
@@ -1453,7 +1469,7 @@ static sds readArgFromStdin(void) {
     }
     return arg;
 }
-
+//当cli的参数错误使用时 输出参数的用法 
 static void usage(void) {
     sds version = cliVersion();
     fprintf(stderr,
