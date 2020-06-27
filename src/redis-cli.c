@@ -1301,23 +1301,31 @@ static int parseOptions(int argc, char **argv) {
             //输出csv格式数据
             config.output = OUTPUT_CSV;
         } else if (!strcmp(argv[i],"--latency")) {
+            //使用此参数，进入延时统计状态
+            //使用此参数，cli会不停地PING服务器并测量获得回复的时间。每秒发生100次，并且统计信息会在控制台中实时更新
             config.latency_mode = 1;
         } else if (!strcmp(argv[i],"--latency-dist")) {
+            //彩色输出延时统计
             config.latency_dist_mode = 1;
         } else if (!strcmp(argv[i],"--mono")) {
+            //没有用到的参数。。。
             spectrum_palette = spectrum_palette_mono;
             spectrum_palette_size = spectrum_palette_mono_size;
         } else if (!strcmp(argv[i],"--latency-history")) {
+            //和--latency几乎一模一样 不过此参数每15秒从头开始一个新的采样会话
             config.latency_mode = 1;
             config.latency_history = 1;
         } else if (!strcmp(argv[i],"--lru-test") && !lastarg) {
             config.lru_test_mode = 1;
             config.lru_test_sample_size = strtoll(argv[++i],NULL,10);
         } else if (!strcmp(argv[i],"--slave")) {
+            //模拟一个redis从库，显示从主库同步过来的命令
             config.slave_mode = 1;
         } else if (!strcmp(argv[i],"--replica")) {
+            //同--slave一样
             config.slave_mode = 1;
         } else if (!strcmp(argv[i],"--stat")) {
+            //动态显示服务器端的状态，包括key的个数，总内存量，当前连接的客户端个数等。。。
             config.stat_mode = 1;
         } else if (!strcmp(argv[i],"--scan")) {
             config.scan_mode = 1;
