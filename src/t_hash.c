@@ -37,6 +37,7 @@
 /* Check the length of a number of objects to see if we need to convert a
  * ziplist to a real hash. Note that we only check string encoded objects
  * as their string length can be queried in constant time. */
+/* 查看是否需要由 ziplist 转换为散列表编码，需要则转换编码 */
 void hashTypeTryConversion(robj *o, robj **argv, int start, int end) {
     int i;
 
@@ -345,6 +346,9 @@ void hashTypeReleaseIterator(hashTypeIterator *hi) {
 
 /* Move to the next entry in the hash. Return C_OK when the next entry
  * could be found and C_ERR when the iterator reaches the end. */
+/* 迭代下一个元素
+ * 如果下一个元素存在，则返回 C_OK；否则返回 C_ERR
+ */
 int hashTypeNext(hashTypeIterator *hi) {
     if (hi->encoding == OBJ_ENCODING_ZIPLIST) {
         unsigned char *zl;
@@ -356,23 +360,28 @@ int hashTypeNext(hashTypeIterator *hi) {
 
         if (fptr == NULL) {
             /* Initialize cursor */
+            /* field的指针为空，则指向第一个entry (只在第一次执行时，初始化指针) */
             serverAssert(vptr == NULL);
             fptr = ziplistIndex(zl, 0);
         } else {
             /* Advance cursor */
+            /* 获取value节点的下一个entry地址，即为下一个field的地址 */
             serverAssert(vptr != NULL);
             fptr = ziplistNext(zl, vptr);
         }
         if (fptr == NULL) return C_ERR;
 
         /* Grab pointer to the value (fptr points to the field) */
+        /* 保存下一个value的地址 */
         vptr = ziplistNext(zl, fptr);
         serverAssert(vptr != NULL);
 
         /* fptr, vptr now point to the first or next pair */
+        /* 更新迭代器的成员信息 */
         hi->fptr = fptr;
         hi->vptr = vptr;
     } else if (hi->encoding == OBJ_ENCODING_HT) {
+        /* 如果是迭代字典，得到下一个字典节点的地址 */
         if ((hi->de = dictNext(hi->di)) == NULL) return C_ERR;
     } else {
         serverPanic("Unknown hash encoding");
@@ -382,6 +391,7 @@ int hashTypeNext(hashTypeIterator *hi) {
 
 /* Get the field or value at iterator cursor, for an iterator on a hash value
  * encoded as a ziplist. Prototype is similar to `hashTypeGetFromZiplist`. */
+/* 获取 ziplist 中当前迭代到的键或值 */
 void hashTypeCurrentFromZiplist(hashTypeIterator *hi, int what,
                                 unsigned char **vstr,
                                 unsigned int *vlen,
@@ -438,6 +448,7 @@ void hashTypeCurrentObject(hashTypeIterator *hi, int what, unsigned char **vstr,
 
 /* Return the key or value at the current iterator position as a new
  * SDS string. */
+/* 获取当前迭代到的键或值 */
 sds hashTypeCurrentObjectNewSds(hashTypeIterator *hi, int what) {
     unsigned char *vstr;
     unsigned int vlen;
@@ -462,6 +473,9 @@ robj *hashTypeLookupWriteOrCreate(client *c, robj *key) {
     return o;
 }
 
+/*
+ * 将 ziplist 压缩表转换为 hashtable
+ */
 void hashTypeConvertZiplist(robj *o, int enc) {
     serverAssert(o->encoding == OBJ_ENCODING_ZIPLIST);
 
@@ -473,14 +487,20 @@ void hashTypeConvertZiplist(robj *o, int enc) {
         dict *dict;
         int ret;
 
+        /* 初始化迭代器 */
         hi = hashTypeInitIterator(o);
+        /* 创建字典 */
         dict = dictCreate(&hashDictType, NULL);
 
+        /* 遍历所有数据，并将其添加到新创建的字典中 */
         while (hashTypeNext(hi) != C_ERR) {
             sds key, value;
 
+            /* 取出 ziplist 里的键 */
             key = hashTypeCurrentObjectNewSds(hi,OBJ_HASH_KEY);
+            /* 取出 ziplist 里的值 */
             value = hashTypeCurrentObjectNewSds(hi,OBJ_HASH_VALUE);
+            /* 将键和值添加到字典中 */
             ret = dictAdd(dict, key, value);
             if (ret != DICT_OK) {
                 serverLogHexDump(LL_WARNING,"ziplist with dup elements dump",

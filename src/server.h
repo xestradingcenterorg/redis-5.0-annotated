@@ -1348,12 +1348,18 @@ typedef struct {
  * not both are required, store pointers in the iterator to avoid
  * unnecessary memory allocation for fields/values. */
 typedef struct {
+    /* 哈希类型迭代器所属的哈希对象 */
     robj *subject;
+    /* 哈希对象的编码类型 */
     int encoding;
 
+    /* 用ziplist编码时，分别指向当前的key和value */
     unsigned char *fptr, *vptr;
 
+    /* 用于字典编码 */
+    /* di为迭代HT类型的哈希对象时的字典迭代器 */
     dictIterator *di;
+    /* de指向当前的哈希表节点 */
     dictEntry *de;
 } hashTypeIterator;
 
